@@ -5,19 +5,28 @@ class UserModel
     private $db;
     private $login;
     private $pass;
+    private $admin;
     private $id;
 
-    public function __construct($login = null, $pass = null, $id = null)
+    public function __construct($login = null, $pass = null, $admin = null, $id = null)
     {
         $this->setId($id);
         $this->setPass($pass);
         $this->setLogin($login);
+        $this->setAdmin($admin);
         $this->db = DBHelper::getInstance();
     }
 
     public function setId(int $id)
     {
         $this->id = $id;
+        return $this;
+    }
+
+    public function setAdmin($admin)
+    {
+        $this->admin = (bool) $admin;
+        $this->admin = (bool) $admin;
         return $this;
     }
 
@@ -57,7 +66,7 @@ class UserModel
             die("NOT FOUND");
         }
 
-        return (new self($user['login'], $user['pass'], $user['id']));
+        return (new self($user['login'], $user['pass'], $user['admin'], $user['id']));
     }
 
     public static function findById(int $id)
@@ -69,7 +78,7 @@ class UserModel
             die("NOT FOUND");
         }
 
-        return (new self($user['login'], $user['pass'], $user['id']));
+        return (new self($user['login'], $user['pass'], $user['admin'], $user['id']));
     }
 
 
@@ -82,12 +91,53 @@ class UserModel
         return (bool) $this->db->affected_rows;
     }
 
+    public function save()
+    {
+        return $this->id ? $this->update() : $this->create();
+    }
+
+    private function create()
+    {
+        $query = "
+          INSERT INTO `users` 
+          SET 
+            `login` = '$this->login',
+            `pass` = '$this->pass',
+            `admin` = 0";
+
+        $this->db->query($query);
+        $this->setId($this->db->insert_id);
+        return (bool) $this->db->insert_id;
+    }
+
+
+    private function update()
+    {
+        $query = "
+          UPDATE `users` 
+          SET 
+            `login` = '$this->login',
+            `pass` = '$this->pass',
+            `admin` = 0
+          WHERE `id` = {$this->id} LIMIT 1";
+
+        $this->db->query($query);
+
+        return (bool) $this->db->affected_rows;
+    }
+
     public function toArray()
     {
         return [
             'login' => $this->getLogin(),
             'pass' => $this->getPass(),
             'id' => $this->getId(),
+            'admin' => (bool) $this->admin
         ];
+    }
+
+    public function checkPassword($pass)
+    {
+        return md5($pass) === $this->pass;
     }
 }
